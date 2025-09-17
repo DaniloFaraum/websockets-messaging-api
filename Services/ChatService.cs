@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using WebKafka.Aplication;
 using WebKafka.Messaging.Interfaces;
 using WebKafka.Services.Interfaces;
 
@@ -9,11 +10,16 @@ namespace WebKafka.Services
 {
     public class ChatService : IChatService
     {
-        private readonly ConcurrentDictionary<Guid, WebSocket> _Sockets = new();
+        private readonly ISocketsManager _Sockets = new();
         private readonly IEventBus _EventBus;
+        private readonly IMessageProcessor _MessageProcessor;
 
-        public ChatService(IEventBus eventBus)
+        public ChatService(IEventBus eventBus, IMessageProcessor messageProcessor, ISocketsManager socketStorage)
         {
+            _Sockets = socketStorage;
+
+            _MessageProcessor = messageProcessor;
+
             _EventBus = eventBus;
             _EventBus.Subscribe("chat-topic", async (message) =>
             {
@@ -37,8 +43,9 @@ namespace WebKafka.Services
                 {
                     var receivedMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     Console.WriteLine($"Mensagem recebida de {socketId}: {receivedMessage}");
-
-                    await _EventBus.PublishAsync("chat-topic", receivedMessage);
+                    var processedMessage = _MessageProcessor.ProcessMessageAsync(socketId, webSocket, receivedMessage);
+                    Console.WriteLine($"processedMessage: {processedMessage}");
+                    if (processedMessage != null) await _EventBus.PublishAsync("chat-topic", receivedMessage);
 
                     result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 }
