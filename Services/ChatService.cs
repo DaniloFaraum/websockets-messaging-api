@@ -5,18 +5,19 @@ using System.Text;
 using WebKafka.Aplication;
 using WebKafka.Messaging.Interfaces;
 using WebKafka.Services.Interfaces;
+using WebKafka.Repositories.SocketsManager;
 
 namespace WebKafka.Services
 {
     public class ChatService : IChatService
     {
-        private readonly ISocketsManager _Sockets = new();
+        private readonly ISocketsManager _SocketManager;
         private readonly IEventBus _EventBus;
         private readonly IMessageProcessor _MessageProcessor;
 
         public ChatService(IEventBus eventBus, IMessageProcessor messageProcessor, ISocketsManager socketStorage)
         {
-            _Sockets = socketStorage;
+            _SocketManager = socketStorage;
 
             _MessageProcessor = messageProcessor;
 
@@ -30,7 +31,7 @@ namespace WebKafka.Services
         public async Task HandleChatConnection(WebSocket webSocket)
         {
             var socketId = Guid.NewGuid();
-            _Sockets.TryAdd(socketId, webSocket);
+            _SocketManager.TryAdd(socketId, webSocket);
 
             Console.WriteLine($"WebSocket conectado: {socketId}");
 
@@ -58,7 +59,7 @@ namespace WebKafka.Services
             }
             finally
             {
-                _Sockets.TryRemove(socketId, out _);
+                _SocketManager.TryRemove(socketId);
             }
         }
 
@@ -66,7 +67,7 @@ namespace WebKafka.Services
         {
             var messageBuffer = Encoding.UTF8.GetBytes(message);
 
-            var tasks = _Sockets.Values.Select(socket =>
+            var tasks = _SocketManager.GetAll().Select(socket =>
             {
                 if (socket.State == WebSocketState.Open)
                 {

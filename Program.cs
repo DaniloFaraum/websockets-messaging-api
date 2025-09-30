@@ -1,14 +1,16 @@
 using WebKafka.Aplication;
 using WebKafka.Messaging.Implementations;
 using WebKafka.Messaging.Interfaces;
+using WebKafka.Repositories.SocketsManager;
 using WebKafka.Services;
 using WebKafka.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddSingleton<IEventBus, KafkaEventBus>();
-builder.Services.AddSingleton<IMessageProcessor, ChatMessageProcessor>(); //isso n deve ser singleton
+builder.Services.AddScoped<IMessageProcessor, ChatMessageProcessor>();
+builder.Services.AddScoped<ISocketsManager, InMemorySocketManager>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
